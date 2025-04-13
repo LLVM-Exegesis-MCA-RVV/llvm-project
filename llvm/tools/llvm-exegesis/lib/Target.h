@@ -154,6 +154,10 @@ public:
     return IsOpcodeAvailable(Opcode, Features);
   }
 
+  // Returns true if the opcode is subject to process.
+  virtual bool isOpcodeSupported(const MCInstrDesc &Desc) const;
+
+
   virtual const char *getIgnoredOpcodeReasonOrNull(const LLVMState &State,
                                                    unsigned Opcode) const;
 
@@ -242,6 +246,12 @@ public:
                                          const BitVector &ForbiddenRegs) const {
     return make_error<Failure>(
         "targets with target-specific operands should implement this");
+  }
+
+  virtual RegisterValue assignInitialRegisterValue(const Instruction &I,
+                                                   const Operand &Op,
+                                                   unsigned Reg) const {
+    return RegisterValue::zero(Reg);
   }
 
   // Returns true if this instruction is supported as a back-to-back
