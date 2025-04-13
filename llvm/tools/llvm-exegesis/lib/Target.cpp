@@ -48,6 +48,14 @@ ExegesisTarget::getIgnoredOpcodeReasonOrNull(const LLVMState &State,
   return nullptr;
 }
 
+bool ExegesisTarget::isOpcodeSupported(const MCInstrDesc &Desc) const {
+  // By default, we ignore pseudo, branch, indirect branch, call, and return
+  // instructions, along with instructions that require custom inserter.
+  return !(Desc.isPseudo() || Desc.usesCustomInsertionHook() ||
+           Desc.isBranch() || Desc.isIndirectBranch() || Desc.isCall() ||
+           Desc.isReturn());
+}
+
 Expected<std::unique_ptr<pfm::CounterGroup>>
 ExegesisTarget::createCounter(StringRef CounterName, const LLVMState &,
                               ArrayRef<const char *> ValidationCounters,
