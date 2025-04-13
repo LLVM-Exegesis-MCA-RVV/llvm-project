@@ -602,6 +602,27 @@ int main(int argc, char **argv) {
 
     IB.clear();
 
+    SmallVector<std::unique_ptr<mca::Instruction>> InitialLoweredSequence;
+    mca::CircularSourceMgr InitialS(InitialLoweredSequence,
+      PrintInstructionTables ? 1 : Iterations);
+
+    std::unique_ptr<mca::CustomBehaviour> InitialCB;
+    if (!DisableCustomBehaviour)
+      InitialCB = std::unique_ptr<mca::CustomBehaviour>(
+          TheTarget->createCustomBehaviour(*STI, InitialS, *MCII));
+    if (!InitialCB)
+      InitialCB = std::make_unique<mca::CustomBehaviour>(*STI, InitialS, *MCII);
+
+    // We should check if CustomBehaviour requires instructions to be multiplied
+    ArrayRef<MCInst> InitialInsts = Region->getInstructions();
+    bool shouldCopy = true;
+    for (int i = 0; i < Region->getInstructions().size(); i++) {
+      if (shouldCopy) { // TODO: InitialCB check here
+        Region->copyInstruction(Region->getInstructions().data()[i], i);
+        i += 1;
+      }
+    }
+
     // Lower the MCInst sequence into an mca::Instruction sequence.
     ArrayRef<MCInst> Insts = Region->getInstructions();
     mca::CodeEmitter CE(*STI, *MAB, *MCE, Insts);

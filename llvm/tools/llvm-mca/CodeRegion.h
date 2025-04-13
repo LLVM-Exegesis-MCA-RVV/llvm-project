@@ -98,6 +98,10 @@ public:
     Instructions.emplace_back(Instruction);
   }
 
+  void copyInstruction(const llvm::MCInst &Instruction, int InstructionIndex) {
+    Instructions.insert(Instructions.begin() + InstructionIndex + 1, Instruction);
+  }
+
   // Remove the given instructions from the set, for unsupported instructions
   // being skipped. Returns an ArrayRef for the updated vector of Instructions.
   [[nodiscard]] llvm::ArrayRef<llvm::MCInst>
