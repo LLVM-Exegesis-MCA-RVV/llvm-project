@@ -131,6 +131,7 @@ defvar TA_MA = 3;
 
 class PseudoToVInst<string PseudoInst> {
   defvar AffixSubsts = [["Pseudo", ""],
+                        ["MOP_", ""],
                         ["_E64", ""],
                         ["_E32", ""],
                         ["_E16", ""],
@@ -574,6 +575,23 @@ def RISCVVInversePseudosTable : GenericTable {
   let Fields = [ "Pseudo", "BaseInstr", "VLMul", "SEW"];
   let PrimaryKey = [ "BaseInstr", "VLMul", "SEW"];
   let PrimaryKeyName = "getBaseInfo";
+  let PrimaryKeyEarlyOut = true;
+}
+
+class RISCVVPseudoMOP {
+  Pseudo Pseudo = !cast<Pseudo>(NAME); // Used as a key.
+  Instruction BaseInstr = !cast<Instruction>(PseudoToVInst<NAME>.VInst);
+  bits<8> SEW = 0;
+  bit IncludeInInversePseudoTable = 1;
+}
+
+def RISCVVInversePseudosMOPTable : GenericTable {
+  let FilterClass = "RISCVVPseudoMOP";
+  let FilterClassField = "IncludeInInversePseudoTable";
+  let CppTypeName = "MOPInfo";
+  let Fields = [ "Pseudo", "BaseInstr" ];
+  let PrimaryKey = [ "BaseInstr" ];
+  let PrimaryKeyName = "getMOPInfo";
   let PrimaryKeyEarlyOut = true;
 }
 
@@ -1514,6 +1532,27 @@ class VPseudoBinaryCarry<VReg RetClass,
   let HasSEWOp = 1;
   let VLMul = MInfo.value;
 }
+
+class SchedHelper<list<SchedReadWrite> schedrw> {
+  list<SchedReadWrite> SchedRW = schedrw;
+}
+
+// TODO: This should be cleared up a bit
+class MOP_PseudoTEST : Pseudo<(outs MxList[0].vrclass:$rd),(ins MxList[0].vrclass:$rs2, MxList[0].vrclass:$rs1,
+                          VMV0:$carry, AVL:$vl, sew:$sew), []> {
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
+  let Constraints = "@earlyclobber $rd";
+  let TargetOverlapConstraintType = 1;
+  let HasVLOp = 1;
+  let HasSEWOp = 1;
+  let VLMul = MxList[0].value;
+}
+
+def MOP_PseudoVMADC_VVM : MOP_PseudoTEST,
+      SchedHelper<[TestWriteRes1, TestWriteRes2]>,
+      RISCVVPseudoMOP;
 
 class VPseudoTiedBinaryCarryIn<VReg RetClass,
                                VReg Op1Class,

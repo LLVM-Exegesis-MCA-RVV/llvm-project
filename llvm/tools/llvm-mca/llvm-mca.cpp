@@ -812,6 +812,68 @@ int main(int argc, char **argv) {
       Printer.printReport(TOF->os());
     }
 
+    // BELOW CREATES ANOTHER PIPELINE ONLY FOR RISCV VECTOR MOPS
+    // TODO: The following can be done implementing something like "PostProcessRegion"
+    // TODO: this pipeline should be vector one. Probably this can be inside CB's postProcessRegion()
+    IM->postProcessRegion(); // Setting pipeline as vector
+
+
+
+
+
+    LoweredSequence.clear();
+    for (const MCInst &MCI : Insts) {
+      SMLoc Loc = MCI.getLoc();
+      const SmallVector<mca::Instrument *> Instruments =
+          InstrumentRegions.getActiveInstruments(Loc);
+      Expected<std::unique_ptr<mca::Instruction>> Inst =
+          IB.createInstruction(MCI, Instruments);
+      IPP->postProcessInstruction(Inst.get(), MCI);
+      InstToInstruments.insert({&MCI, Instruments});
+      LoweredSequence.emplace_back(std::move(Inst.get()));
+    }
+    Insts = Region->dropInstructions(DroppedInsts);
+
+      auto Insts2 = /*filterVectorInsts*/Insts/*)*/;
+      mca::CircularSourceMgr S2(/*filterVectorSequence(*/LoweredSequence/*)*/,
+                              PrintInstructionTables ? 1 : Iterations);
+      auto P2 = MCA.createDefaultPipeline(PO, S2, *CB);
+      mca::PipelinePrinter Printer2(*P2, *Region, RegionIdx, *STI, PO);
+
+      if (PrintDispatchStats)
+        Printer2.addView(std::make_unique<mca::DispatchStatistics>());
+
+      if (PrintSchedulerStats)
+        Printer2.addView(std::make_unique<mca::SchedulerStatistics>(*STI));
+
+      if (PrintRetireStats)
+        Printer2.addView(std::make_unique<mca::RetireControlUnitStatistics>(SM));
+
+      if (PrintRegisterFileStats)
+        Printer2.addView(std::make_unique<mca::RegisterFileStatistics>(*STI));
+
+      if (PrintResourcePressureView)
+        Printer2.addView(
+            std::make_unique<mca::ResourcePressureView>(*STI, *IP, Insts2));
+
+      if (PrintTimelineView) {
+        unsigned TimelineIterations =
+            TimelineMaxIterations ? TimelineMaxIterations : 10;
+        Printer2.addView(std::make_unique<mca::TimelineView>(
+            *STI, *IP, Insts2, std::min(TimelineIterations, S2.getNumIterations()),
+            TimelineMaxCycles));
+      }
+
+      if (!runPipeline(*P2))
+        return 1;
+
+      if (PrintJson) {
+        Printer2.printReport(JSONOutput);
+      } else {
+        Printer2.printReport(TOF->os());
+      }
+    IM->postProcessRegion(); // Unsetting pipeline as vector
+
     ++RegionIdx;
   }
 

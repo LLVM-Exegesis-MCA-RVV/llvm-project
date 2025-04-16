@@ -51,12 +51,15 @@ public:
 };
 
 class RISCVInstrumentManager : public InstrumentManager {
+  bool PipelineStatus;
+
 public:
   RISCVInstrumentManager(const MCSubtargetInfo &STI, const MCInstrInfo &MCII)
-      : InstrumentManager(STI, MCII) {}
+      : InstrumentManager(STI, MCII), PipelineStatus(false) {}
 
   bool shouldIgnoreInstruments() const override { return false; }
   bool supportsInstrumentType(StringRef Type) const override;
+  bool isVectorPipeline() const { return PipelineStatus; }
 
   /// Create a Instrument for RISC-V target
   UniqueInstrument createInstrument(StringRef Desc, StringRef Data) override;
@@ -68,9 +71,21 @@ public:
   unsigned
   getSchedClassID(const MCInstrInfo &MCII, const MCInst &MCI,
                   const SmallVector<Instrument *> &IVec) const override;
+
+  void postProcessRegion() override;
 };
 
 } // namespace mca
+
+namespace RISCVVInversePseudosMOPTable {
+  struct MOPInfo {
+    uint16_t Pseudo;
+    uint16_t BaseInstr;
+  };
+
+  #define GET_RISCVVInversePseudosMOPTable_DECL
+  #include "RISCVGenSearchableTables.inc"
+  } // namespace RISCVVInversePseudosMOPTable
 } // namespace llvm
 
 #endif

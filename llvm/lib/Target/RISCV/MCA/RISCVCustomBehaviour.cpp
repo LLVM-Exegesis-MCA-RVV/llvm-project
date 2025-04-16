@@ -18,6 +18,8 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/Debug.h"
 
+#include <iostream>
+
 #define DEBUG_TYPE "llvm-mca-riscv-custombehaviour"
 
 namespace llvm::RISCV {
@@ -34,6 +36,16 @@ struct VXMemOpInfo {
 } // namespace llvm::RISCV
 
 namespace llvm {
+
+
+
+namespace RISCVVInversePseudosMOPTable {
+using namespace RISCV;
+#define GET_RISCVVInversePseudosMOPTable_IMPL
+#include "RISCVGenSearchableTables.inc"
+} // namespace RISCVVInversePseudosMOPTable
+
+
 namespace mca {
 
 const llvm::StringRef RISCVLMULInstrument::DESC_NAME = "RISCV-LMUL";
@@ -230,6 +242,11 @@ static bool opcodeHasEEWAndEMULInfo(unsigned short Opcode) {
          Opcode == RISCV::VLSE64_V || Opcode == RISCV::VSSE64_V;
 }
 
+void RISCVInstrumentManager::postProcessRegion() {
+  std::cout << "\nn\\n\n\n\n\n\n POST PROCESS RISCV REGION\n\n\n\n";
+  PipelineStatus = PipelineStatus ? false : true;
+}
+
 unsigned RISCVInstrumentManager::getSchedClassID(
     const MCInstrInfo &MCII, const MCInst &MCI,
     const llvm::SmallVector<Instrument *> &IVec) const {
@@ -306,8 +323,21 @@ unsigned RISCVInstrumentManager::getSchedClassID(
     if (!RVV)
       RVV = RISCVVInversePseudosTable::getBaseInfo(Opcode, LMUL, 0);
 
-    if (RVV)
+    if (RVV) {
       VPOpcode = RVV->Pseudo;
+      const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
+      if (RVVMOPs) {
+        // Changing the opcode to the MOP
+        if (isVectorPipeline()) {
+          VPOpcode = RVVMOPs->Pseudo;
+          std::cout << "\n\n FOUND MOP for INSTRUCTION: " << RVV->BaseInstr << "\n\n";
+        } else {
+          std::cout << "\n\n\n PIPELINE IS NOT VECTOR \n\n\n";
+        }
+      } else {
+        std::cout << "\n\n NO MOP FOR INSTRUCTION: " << RVV->BaseInstr << "\n\n";
+      }
+    }
   }
 
   // Not a RVV instr

@@ -13,6 +13,8 @@
 
 #include "llvm/MCA/CustomBehaviour.h"
 
+#include <iostream>
+
 namespace llvm {
 namespace mca {
 
@@ -56,6 +58,11 @@ unsigned InstrumentManager::getSchedClassID(
     const MCInstrInfo &MCII, const MCInst &MCI,
     const llvm::SmallVector<Instrument *> &IVec) const {
   return MCII.get(MCI.getOpcode()).getSchedClass();
+}
+
+void InstrumentManager::postProcessRegion() {
+  std::cout << "\nn\\n\n\n\n\n\n NO POST PROCESS REGION\n\n\n\n";
+  return;
 }
 
 } // namespace mca

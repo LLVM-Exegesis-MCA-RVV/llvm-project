@@ -353,7 +353,7 @@ def : WriteRes<WriteJmp, [SiFiveP600Branch]>;
 def : WriteRes<WriteJal, [SiFiveP600Branch]>;
 def : WriteRes<WriteJalr, [SiFiveP600Branch]>;
 
-let Latency = 123, ReleaseAtCycles = [123] in {
+let Latency = 22, ReleaseAtCycles = [22] in {
   def : WriteRes<TestWriteRes1, [TestResourceP600]>;  // Definition for companion MOP resource
   def : WriteRes<TestWriteRes2, [TestResourceP600]>;  // Definition for companion MOP resource
 }

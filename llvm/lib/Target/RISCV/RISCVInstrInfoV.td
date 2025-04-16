@@ -99,10 +99,6 @@ def simm5_plus1_nonzero : ImmLeaf<XLenVT,
 // Scheduling definitions.
 //===----------------------------------------------------------------------===//
 
-class SchedHelper<list<SchedReadWrite> schedrw> {
-  list<SchedReadWrite> SchedRW = schedrw;
-}
-
 // Common class of scheduling definitions.
 // `ReadVPassthru` will be prepended to reads if instruction is masked.
 // `ReadVMask` will be appended to reads if instruction is masked.
@@ -1322,8 +1318,7 @@ defm VWMULSU_V : VWMUL_MV_V_X<"vwmulsu", 0b111010>;
 
 // Vector Single-Width Integer Multiply-Add Instructions
 defm VMACC_V : VMAC_MV_V_X<"vmacc", 0b101101>;
-defm VNMSAC_V : VMAC_MV_V_X<"vnmsac", 0b101111>,
-  SchedHelper<[TestWriteRes1, TestWriteRes2]>; // Companion MOP resources
+defm VNMSAC_V : VMAC_MV_V_X<"vnmsac", 0b101111>;
 defm VMADD_V : VMAC_MV_V_X<"vmadd", 0b101001>;
 defm VNMSUB_V : VMAC_MV_V_X<"vnmsub", 0b101011>;
 
