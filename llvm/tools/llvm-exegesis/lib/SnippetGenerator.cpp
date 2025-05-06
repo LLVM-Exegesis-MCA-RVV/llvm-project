@@ -130,18 +130,19 @@ std::vector<RegisterValue> SnippetGenerator::computeRegisterInitialValues(
         return IT.getValueFor(Op).getReg();
       return MCRegister();
     };
+    const Instruction &I = IT.getInstr();
     // Collect used registers that have never been def'ed.
-    for (const Operand &Op : IT.getInstr().Operands) {
+    for (const Operand &Op : I.Operands) {
       if (Op.isUse()) {
         const MCRegister Reg = GetOpReg(Op);
         if (Reg && !DefinedRegs.test(Reg.id())) {
-          RIV.push_back(RegisterValue::zero(Reg));
+          RIV.push_back(Target.assignInitialRegisterValue(I, Op, Reg.id()));
           DefinedRegs.set(Reg.id());
         }
       }
     }
     // Mark defs as having been def'ed.
-    for (const Operand &Op : IT.getInstr().Operands) {
+    for (const Operand &Op : I.Operands) {
       if (Op.isDef()) {
         const MCRegister Reg = GetOpReg(Op);
         if (Reg)
@@ -296,16 +297,17 @@ Error randomizeUnsetVariables(const LLVMState &State,
 }
 
 Error validateGeneratedInstruction(const LLVMState &State, const MCInst &Inst) {
-  for (const auto &Operand : Inst) {
-    if (!Operand.isValid()) {
+  for (const auto &Operand : llvm::enumerate(Inst)) {
+    if (!Operand.value().isValid()) {
       // Mention the particular opcode - it is not necessarily the "main"
       // opcode being benchmarked by this snippet. For example, serial snippet
       // generator uses one more opcode when in SERIAL_VIA_NON_MEMORY_INSTR
       // execution mode.
       const auto OpcodeName = State.getInstrInfo().getName(Inst.getOpcode());
-      return make_error<Failure>("Not all operands were initialized by the "
-                                 "snippet generator for " +
-                                 OpcodeName + " opcode.");
+      return make_error<Failure>(
+          "Operand #" + std::to_string(Operand.index()) +
+          " was not initialized by the snippet generator for " + OpcodeName +
+          " opcode.");
     }
   }
   return Error::success();

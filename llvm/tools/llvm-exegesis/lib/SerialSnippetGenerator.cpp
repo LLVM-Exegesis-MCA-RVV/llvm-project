@@ -53,7 +53,9 @@ computeAliasingInstructions(const LLVMState &State, const Instruction *Instr,
     if (OtherOpcode == Instr->Description.getOpcode())
       continue;
     const Instruction &OtherInstr = State.getIC().getInstr(OtherOpcode);
-    if (ET.getIgnoredOpcodeReasonOrNull(State, OtherInstr.getOpcode()))
+    const MCInstrDesc &OtherInstrDesc = OtherInstr.Description;
+    // Ignore instructions that we cannot run.
+    if (!ET.isOpcodeSupported(OtherInstrDesc))
       continue;
     if (OtherInstr.hasMemoryOperands())
       continue;

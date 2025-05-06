@@ -8,6 +8,8 @@
 // \file
 // This Pass converts some of the virtual register operands in VSETVLI and FRM
 // pseudos into physical registers.
+// Currently there is only one post-processing we need to do for exegesis:
+// Assign a physical register to VSETVL's rd if it's not X0 (i.e. VLMAX).
 //
 //===----------------------------------------------------------------------===//
 
@@ -91,7 +93,7 @@ Register RISCVExegesisPostprocessing::allocateGPRRegister(
       return Register(SetIdx);
   }
 
-  // All bets are off, assign a fixed one.
+  // All bets are off, assigned a fixed one.
   return RISCV::X5;
 }
 
@@ -116,10 +118,12 @@ bool RISCVExegesisPostprocessing::processWriteFRM(MachineInstr &MI,
                                                   MachineRegisterInfo &MRI) {
   // The virtual register will be the first operand in both SwapFRMImm and
   // WriteFRM.
-  Register DestReg = MI.getOperand(0).getReg();
-  if (DestReg.isVirtual()) {
-    MRI.replaceRegWith(DestReg, allocateGPRRegister(*MI.getMF(), MRI));
-    return true;
+  if (MI.getOperand(0).isReg()) {
+    Register DestReg = MI.getOperand(0).getReg();
+    if (DestReg.isVirtual()) {
+      MRI.replaceRegWith(DestReg, allocateGPRRegister(*MI.getMF(), MRI));
+      return true;
+    }
   }
   return false;
 }

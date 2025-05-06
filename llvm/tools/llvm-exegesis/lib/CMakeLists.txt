@@ -12,7 +12,7 @@ endif()
 if (LLVM_TARGETS_TO_BUILD MATCHES "Mips")
   list(APPEND LLVM_EXEGESIS_TARGETS "Mips")
 endif()
-if(LLVM_TARGETS_TO_BUILD MATCHES "RISCV")
+if (LLVM_TARGETS_TO_BUILD MATCHES "RISCV")
   list(APPEND LLVM_EXEGESIS_TARGETS "RISCV")
 endif()
 
@@ -53,6 +53,7 @@ add_llvm_library(LLVMExegesis
   DISABLE_LLVM_LINK_LLVM_DYLIB
   STATIC
   Analysis.cpp
+  AnalysisPrinters.cpp
   Assembler.cpp
   BenchmarkResult.cpp
   BenchmarkRunner.cpp
@@ -75,6 +76,7 @@ add_llvm_library(LLVMExegesis
   SnippetRepetitor.cpp
   SubprocessMemory.cpp
   Target.cpp
+  Timer.cpp
   UopsBenchmarkRunner.cpp
   ValidationEvent.cpp
 

@@ -67,6 +67,7 @@ struct Operand {
   bool isImplicitReg() const;
   bool isDef() const;
   bool isUse() const;
+  bool isEarlyClobber() const;
   bool isReg() const;
   bool isTied() const;
   bool isVariable() const;

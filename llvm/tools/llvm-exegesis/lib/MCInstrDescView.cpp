@@ -44,6 +44,8 @@ bool Operand::isDef() const { return IsDef; }
 
 bool Operand::isUse() const { return !IsDef; }
 
+bool Operand::isEarlyClobber() const { return IsEarlyClobber; }
+
 bool Operand::isReg() const { return Tracker; }
 
 bool Operand::isTied() const { return TiedToIndex.has_value(); }

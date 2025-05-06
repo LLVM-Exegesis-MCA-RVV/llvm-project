@@ -28,6 +28,38 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 
 #include <vector>
+#include "RISCVSubtarget.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallSet.h"
+
+#include <array>
+
+#include <linux/perf_event.h>
+
+namespace RVVPseudoTables {
+using namespace llvm;
+using namespace llvm::RISCV;
+
+struct PseudoInfo {
+  uint16_t Pseudo;
+  uint16_t BaseInstr;
+  uint8_t VLMul;
+  uint8_t SEW;
+};
+
+struct RISCVMaskedPseudoInfo {
+  uint16_t MaskedPseudo;
+  uint16_t UnmaskedPseudo;
+  uint8_t MaskOpIdx;
+};
+
+#define GET_RISCVVInversePseudosTable_IMPL
+#define GET_RISCVVInversePseudosTable_DECL
+#define GET_RISCVMaskedPseudosTable_DECL
+#define GET_RISCVMaskedPseudosTable_IMPL
+#include "RISCVGenSearchableTables.inc"
+
+} // namespace RVVPseudoTables
 
 namespace llvm {
 namespace exegesis {
@@ -50,6 +82,28 @@ static cl::opt<std::string>
 #include "RISCVGenExegesis.inc"
 
 namespace {
+
+    static perf_event_attr *createPerfEventAttr(unsigned Type, uint64_t Config) {
+        auto *PEA = new perf_event_attr();
+        memset(PEA, 0, sizeof(perf_event_attr));
+        PEA->type = Type;
+        PEA->size = sizeof(perf_event_attr);
+        PEA->config = Config;
+        PEA->disabled = 1;
+        PEA->exclude_kernel = 1;
+        PEA->exclude_hv = 1;
+        return PEA;
+      }
+      
+      struct RISCVPerfEvent : public pfm::PerfEvent {
+        explicit RISCVPerfEvent(StringRef PfmEventString)
+            : pfm::PerfEvent(PfmEventString) {
+          FullQualifiedEventString = EventString;
+      
+          if (EventString == "CYCLES" || EventString == "CPU_CYCLES")
+            Attr = createPerfEventAttr(PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES);
+        }
+      };
 
 template <class BaseT> class RISCVSnippetGenerator : public BaseT {
   static void printRoundingMode(raw_ostream &OS, unsigned Val, bool UsesVXRM) {
@@ -149,17 +203,15 @@ public:
         RISCV::GPRRegClassID, RISCV::FPR16RegClassID, RISCV::VRRegClassID};
 
     for (unsigned RegClassID : StandaloneRegClasses)
-      for (unsigned Reg : RegInfo.getRegClass(RegClassID))
+      for (unsigned Reg : RegInfo.getRegClass(RegClassID)) {
         AggregateRegisters.reset(Reg);
+      }
 
-    // Initialize ELEN and VLEN.
-    // FIXME: We could have obtained these two constants from RISCVSubtarget
-    // but in order to get that from TargetMachine, we need a Function.
+    // Initialize the ZvlVLen.
     const MCSubtargetInfo &STI = State.getSubtargetInfo();
     ELEN = STI.checkFeatures("+zve64x") ? 64 : 32;
-
     std::string ZvlQuery;
-    for (unsigned Size = 32; Size <= 65536; Size *= 2) {
+    for (unsigned I = 5U, Size = (1 << I); I < 17U; ++I, Size <<= 1) {
       ZvlQuery = "+zvl";
       raw_string_ostream SS(ZvlQuery);
       SS << Size << "b";
@@ -608,25 +660,25 @@ RISCVSnippetGenerator<BaseT>::generateCodeTemplates(
 
 // Stores constant value to a general-purpose (integer) register.
 static std::vector<MCInst> loadIntReg(const MCSubtargetInfo &STI,
-                                      MCRegister Reg, const APInt &Value) {
-  SmallVector<MCInst, 8> MCInstSeq;
-  MCRegister DestReg = Reg;
+    MCRegister Reg, const APInt &Value) {
+SmallVector<MCInst, 8> MCInstSeq;
+MCRegister DestReg = Reg;
 
-  RISCVMatInt::generateMCInstSeq(Value.getSExtValue(), STI, DestReg, MCInstSeq);
+RISCVMatInt::generateMCInstSeq(Value.getSExtValue(), STI, DestReg, MCInstSeq);
 
-  std::vector<MCInst> MatIntInstrs(MCInstSeq.begin(), MCInstSeq.end());
-  return MatIntInstrs;
+std::vector<MCInst> MatIntInstrs(MCInstSeq.begin(), MCInstSeq.end());
+return MatIntInstrs;
 }
 
 const MCPhysReg ScratchIntReg = RISCV::X30; // t5
 
 // Stores constant bits to a floating-point register.
 static std::vector<MCInst> loadFPRegBits(const MCSubtargetInfo &STI,
-                                         MCRegister Reg, const APInt &Bits,
-                                         unsigned FmvOpcode) {
-  std::vector<MCInst> Instrs = loadIntReg(STI, ScratchIntReg, Bits);
-  Instrs.push_back(MCInstBuilder(FmvOpcode).addReg(Reg).addReg(ScratchIntReg));
-  return Instrs;
+    MCRegister Reg, const APInt &Bits,
+    unsigned FmvOpcode) {
+std::vector<MCInst> Instrs = loadIntReg(STI, ScratchIntReg, Bits);
+Instrs.push_back(MCInstBuilder(FmvOpcode).addReg(Reg).addReg(ScratchIntReg));
+return Instrs;
 }
 
 // main idea is:
@@ -635,22 +687,22 @@ static std::vector<MCInst> loadFPRegBits(const MCSubtargetInfo &STI,
 // and then do FCVT this is only reliable thing in 32-bit mode, otherwise we
 // need to use __floatsidf
 static std::vector<MCInst> loadFP64RegBits32(const MCSubtargetInfo &STI,
-                                             MCRegister Reg,
-                                             const APInt &Bits) {
-  double D = Bits.bitsToDouble();
-  double IPart;
-  double FPart = std::modf(D, &IPart);
+    MCRegister Reg,
+    const APInt &Bits) {
+double D = Bits.bitsToDouble();
+double IPart;
+double FPart = std::modf(D, &IPart);
 
-  if (std::abs(FPart) > std::numeric_limits<double>::epsilon()) {
-    errs() << "loadFP64RegBits32 is not implemented for doubles like " << D
-           << ", please remove fractional part\n";
-    return {};
-  }
+if (std::abs(FPart) > std::numeric_limits<double>::epsilon()) {
+errs() << "loadFP64RegBits32 is not implemented for doubles like " << D
+<< ", please remove fractional part\n";
+return {};
+}
 
-  std::vector<MCInst> Instrs = loadIntReg(STI, ScratchIntReg, Bits);
-  Instrs.push_back(
-      MCInstBuilder(RISCV::FCVT_D_W).addReg(Reg).addReg(ScratchIntReg));
-  return Instrs;
+std::vector<MCInst> Instrs = loadIntReg(STI, ScratchIntReg, Bits);
+Instrs.push_back(
+MCInstBuilder(RISCV::FCVT_D_W).addReg(Reg).addReg(ScratchIntReg));
+return Instrs;
 }
 
 class ExegesisRISCVTarget : public ExegesisTarget {
@@ -692,12 +744,91 @@ public:
   }
 
   MCRegister getDefaultLoopCounterRegister(const Triple &) const override;
+private:
+  RegisterValue assignInitialRegisterValue(const Instruction &I,
+                                           const Operand &Op,
+                                           unsigned Reg) const override {
+    // If this is a register AVL, we don't want to assign 0 or VLMAX VL.
+    if (Op.isExplicit() &&
+        Op.getExplicitOperandInfo().OperandType == RISCVOp::OPERAND_AVL) {
+      // Assume VLEN is 128 here.
+      constexpr unsigned VLEN = 128;
+      // VLMAX equals to VLEN since
+      // VLMAX = VLEN / <smallest SEW = 8> * <largest LMUL = 8>.
+      return RegisterValue{Reg, APInt(32, randomIndex(VLEN - 4) + 2)};
+    }
+
+    switch (I.getOpcode()) {
+    // We don't want divided-by-zero for these opcodes.
+    case RISCV::DIV:
+    case RISCV::DIVU:
+    case RISCV::DIVW:
+    case RISCV::DIVUW:
+    case RISCV::REM:
+    case RISCV::REMU:
+    case RISCV::REMW:
+    case RISCV::REMUW:
+    // Multiplications and its friends are not really interestings
+    // when they're multiplied by zero.
+    case RISCV::MUL:
+    case RISCV::MULH:
+    case RISCV::MULHSU:
+    case RISCV::MULHU:
+    case RISCV::MULW:
+    case RISCV::CPOP:
+    case RISCV::CPOPW:
+      return RegisterValue{Reg, APInt(32, randomIndex(INT32_MAX - 1) + 1)};
+    default:
+      return ExegesisTarget::assignInitialRegisterValue(I, Op, Reg);
+    }
+  }
+
+private:
+    RegisterValue assignInitialRegisterValue(const Instruction &I,
+        const Operand &Op,
+        unsigned Reg) const override {
+    // If this is a register AVL, we don't want to assign 0 or VLMAX VL.
+    if (Op.isExplicit() &&
+    Op.getExplicitOperandInfo().OperandType == RISCVOp::OPERAND_AVL) {
+    // Assume VLEN is 128 here.
+    constexpr unsigned VLEN = 128;
+    // VLMAX equals to VLEN since
+    // VLMAX = VLEN / <smallest SEW = 8> * <largest LMUL = 8>.
+    return RegisterValue{Reg, APInt(32, randomIndex(VLEN - 4) + 2)};
+    }
+
+    switch (I.getOpcode()) {
+    // We don't want divided-by-zero for these opcodes.
+    case RISCV::DIV:
+    case RISCV::DIVU:
+    case RISCV::DIVW:
+    case RISCV::DIVUW:
+    case RISCV::REM:
+    case RISCV::REMU:
+    case RISCV::REMW:
+    case RISCV::REMUW:
+    // Multiplications and its friends are not really interestings
+    // when they're multiplied by zero.
+    case RISCV::MUL:
+    case RISCV::MULH:
+    case RISCV::MULHSU:
+    case RISCV::MULHU:
+    case RISCV::MULW:
+    case RISCV::CPOP:
+    case RISCV::CPOPW:
+    return RegisterValue{Reg, APInt(32, randomIndex(INT32_MAX - 1) + 1)};
+    default:
+    return ExegesisTarget::assignInitialRegisterValue(I, Op, Reg);
+    }
+    }
+public:
+
 
   void decrementLoopCounterAndJump(MachineBasicBlock &MBB,
                                    MachineBasicBlock &TargetMBB,
                                    const MCInstrInfo &MII,
                                    MCRegister LoopRegister) const override;
-
+                                   
   MCRegister getScratchMemoryRegister(const Triple &TT) const override;
 
   void fillMemoryOperands(InstructionTemplate &IT, MCRegister Reg,
@@ -730,6 +861,31 @@ public:
   std::vector<InstructionTemplate>
   generateInstructionVariants(const Instruction &Instr,
                               unsigned MaxConfigsPerOpcode) const override;
+
+  Expected<std::unique_ptr<pfm::CounterGroup>>
+  createCounter(StringRef CounterName, const LLVMState &,
+                ArrayRef<const char *> ValidationCounters,
+                const pid_t ProcessID) const override {
+    auto Event = static_cast<pfm::PerfEvent>(RISCVPerfEvent(CounterName));
+    if (!Event.valid())
+      return llvm::make_error<Failure>(
+          llvm::Twine("Unable to create counter with name '")
+              .concat(CounterName)
+              .concat("'"));
+
+    std::vector<pfm::PerfEvent> ValidationEvents;
+    for (const char *ValCounterName : ValidationCounters) {
+      ValidationEvents.emplace_back(ValCounterName);
+      if (!ValidationEvents.back().valid())
+        return llvm::make_error<Failure>(
+            llvm::Twine("Unable to create validation counter with name '")
+                .concat(ValCounterName)
+                .concat("'"));
+    }
+
+    return std::make_unique<pfm::CounterGroup>(
+        std::move(Event), std::move(ValidationEvents), ProcessID);
+  }
 
   void addTargetSpecificPasses(PassManagerBase &PM) const override {
     // Turn AVL operand of physical registers into virtual registers.
