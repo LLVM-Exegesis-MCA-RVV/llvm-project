@@ -111,6 +111,7 @@ std::vector<RegisterValue> SnippetGenerator::computeRegisterInitialValues(
   // Loop invariant: DefinedRegs[i] is true iif it has been set at least once
   // before the current instruction.
   BitVector DefinedRegs = State.getRATC().emptyRegisters();
+  const auto &ET = State.getExegesisTarget();
   // If target always expects a scratch memory register as live input,
   // mark it as defined.
   const ExegesisTarget &Target = State.getExegesisTarget();

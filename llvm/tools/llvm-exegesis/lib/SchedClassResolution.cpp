@@ -91,8 +91,7 @@ getNonRedundantWriteProcRes(const MCSchedClassDesc &SCDesc,
       // This is a ProcResUnit.
       Result.push_back(
           {WPR->ProcResourceIdx, WPR->ReleaseAtCycle, WPR->AcquireAtCycle});
-      ProcResUnitUsage[WPR->ProcResourceIdx] +=
-          (WPR->ReleaseAtCycle - WPR->AcquireAtCycle);
+      ProcResUnitUsage[WPR->ProcResourceIdx] += (WPR->ReleaseAtCycle - WPR->AcquireAtCycle);
     } else {
       // This is a ProcResGroup. First see if it contributes any cycles or if
       // it has cycles just from subunits.
@@ -336,7 +335,6 @@ std::vector<BenchmarkMeasure> ResolvedSchedClass::getAsPoint(
     for (unsigned I = 0; I < SCDesc->NumWriteLatencyEntries; ++I) {
       const MCWriteLatencyEntry *const WLE =
           STI.getWriteLatencyEntry(SCDesc, I);
-
       unsigned Latency = computeNormalizedWriteLatency(WLE, STI);
       LatencyMeasure.PerInstructionValue =
           std::max<double>(LatencyMeasure.PerInstructionValue, Latency);
