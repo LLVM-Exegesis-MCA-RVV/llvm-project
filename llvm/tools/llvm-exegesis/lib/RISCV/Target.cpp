@@ -783,46 +783,45 @@ private:
     }
   }
 
-private:
-    RegisterValue assignInitialRegisterValue(const Instruction &I,
-        const Operand &Op,
-        unsigned Reg) const override {
-    // If this is a register AVL, we don't want to assign 0 or VLMAX VL.
-    if (Op.isExplicit() &&
-    Op.getExplicitOperandInfo().OperandType == RISCVOp::OPERAND_AVL) {
-    // Assume VLEN is 128 here.
-    constexpr unsigned VLEN = 128;
-    // VLMAX equals to VLEN since
-    // VLMAX = VLEN / <smallest SEW = 8> * <largest LMUL = 8>.
-    return RegisterValue{Reg, APInt(32, randomIndex(VLEN - 4) + 2)};
-    }
+// private:
+//     RegisterValue assignInitialRegisterValue(const Instruction &I,
+//         const Operand &Op,
+//         unsigned Reg) const override {
+//     // If this is a register AVL, we don't want to assign 0 or VLMAX VL.
+//     if (Op.isExplicit() &&
+//     Op.getExplicitOperandInfo().OperandType == RISCVOp::OPERAND_AVL) {
+//     // Assume VLEN is 128 here.
+//     constexpr unsigned VLEN = 128;
+//     // VLMAX equals to VLEN since
+//     // VLMAX = VLEN / <smallest SEW = 8> * <largest LMUL = 8>.
+//     return RegisterValue{Reg, APInt(32, randomIndex(VLEN - 4) + 2)};
+//     }
 
-    switch (I.getOpcode()) {
-    // We don't want divided-by-zero for these opcodes.
-    case RISCV::DIV:
-    case RISCV::DIVU:
-    case RISCV::DIVW:
-    case RISCV::DIVUW:
-    case RISCV::REM:
-    case RISCV::REMU:
-    case RISCV::REMW:
-    case RISCV::REMUW:
-    // Multiplications and its friends are not really interestings
-    // when they're multiplied by zero.
-    case RISCV::MUL:
-    case RISCV::MULH:
-    case RISCV::MULHSU:
-    case RISCV::MULHU:
-    case RISCV::MULW:
-    case RISCV::CPOP:
-    case RISCV::CPOPW:
-    return RegisterValue{Reg, APInt(32, randomIndex(INT32_MAX - 1) + 1)};
-    default:
-    return ExegesisTarget::assignInitialRegisterValue(I, Op, Reg);
-    }
-    }
+//     switch (I.getOpcode()) {
+//     // We don't want divided-by-zero for these opcodes.
+//     case RISCV::DIV:
+//     case RISCV::DIVU:
+//     case RISCV::DIVW:
+//     case RISCV::DIVUW:
+//     case RISCV::REM:
+//     case RISCV::REMU:
+//     case RISCV::REMW:
+//     case RISCV::REMUW:
+//     // Multiplications and its friends are not really interestings
+//     // when they're multiplied by zero.
+//     case RISCV::MUL:
+//     case RISCV::MULH:
+//     case RISCV::MULHSU:
+//     case RISCV::MULHU:
+//     case RISCV::MULW:
+//     case RISCV::CPOP:
+//     case RISCV::CPOPW:
+//     return RegisterValue{Reg, APInt(32, randomIndex(INT32_MAX - 1) + 1)};
+//     default:
+//     return ExegesisTarget::assignInitialRegisterValue(I, Op, Reg);
+//     }
+//     }
 public:
-
 
   void decrementLoopCounterAndJump(MachineBasicBlock &MBB,
                                    MachineBasicBlock &TargetMBB,

@@ -52,8 +52,6 @@ bool Operand::isTied() const { return TiedToIndex.has_value(); }
 
 bool Operand::isVariable() const { return VariableIndex.has_value(); }
 
-bool Operand::isEarlyClobber() const { return IsEarlyClobber; }
-
 bool Operand::isMemory() const {
   return isExplicit() &&
          getExplicitOperandInfo().OperandType == MCOI::OPERAND_MEMORY;

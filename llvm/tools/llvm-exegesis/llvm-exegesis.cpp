@@ -433,7 +433,8 @@ static Expected<std::vector<BenchmarkCode>>
 generateSnippets(const LLVMState &State, unsigned Opcode,
                  const BitVector &ForbiddenRegs) {
   // Ignore instructions that we cannot run.
-  if (!State.getExegesisTarget().isOpcodeSupported(InstrDesc))
+  // if (!State.getExegesisTarget().isOpcodeSupported(InstrDesc))
+  if (!State.getExegesisTarget().getIgnoredOpcodeReasonOrNull(State, Opcode))
     return make_error<Failure>("Opcode is not supported");
 
   const Instruction &Instr = State.getIC().getInstr(Opcode);
