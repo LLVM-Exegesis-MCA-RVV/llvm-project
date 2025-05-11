@@ -443,6 +443,29 @@ int main(int argc, char **argv) {
   std::unique_ptr<MCInstrAnalysis> MCIA(
       TheTarget->createMCInstrAnalysis(MCII.get()));
 
+  std::unique_ptr<mca::InstrPreProcess> IPRP;
+  std::unique_ptr<mca::InstrPostProcess> IPP;
+  if (!DisableCustomBehaviour) {
+    // TODO: It may be a good idea to separate CB and IPP so that they can
+    // be used independently of each other. What I mean by this is to add
+    // an extra command-line arg --disable-ipp so that CB and IPP can be
+    // toggled without needing to toggle both of them together.
+    IPRP = std::unique_ptr<mca::InstrPreProcess>(
+        TheTarget->createInstrPreProcess(*STI, *MCII));
+    IPP = std::unique_ptr<mca::InstrPostProcess>(
+        TheTarget->createInstrPostProcess(*STI, *MCII));
+  }
+  if (!IPRP) {
+    // If the target doesn't have its own IPRP implemented (or the -disable-cb
+    // flag is set) then we use the base class (which does nothing).
+    IPRP = std::make_unique<mca::InstrPreProcess>(*STI, *MCII);
+  }
+  if (!IPP) {
+    // If the target doesn't have its own IPP implemented (or the -disable-cb
+    // flag is set) then we use the base class (which does nothing).
+    IPP = std::make_unique<mca::InstrPostProcess>(*STI, *MCII);
+  }
+
   // Need to initialize an MCInstPrinter as it is
   // required for initializing the MCTargetStreamer
   // which needs to happen within the CRG.parseAnalysisRegions() call below.
@@ -467,7 +490,7 @@ int main(int argc, char **argv) {
       TheTarget->createMCObjectFileInfo(ACtx, /*PIC=*/false));
   ACtx.setObjectFileInfo(AMOFI.get());
   mca::AsmAnalysisRegionGenerator CRG(*TheTarget, SrcMgr, ACtx, *MAI, *STI,
-                                      *MCII);
+                                      *MCII, *IPRP);
   Expected<const mca::AnalysisRegions &> RegionsOrErr =
       CRG.parseAnalysisRegions(std::move(IPtemp),
                                shouldSkip(SkipType::PARSE_FAILURE));
@@ -510,7 +533,7 @@ int main(int argc, char **argv) {
       TheTarget->createMCObjectFileInfo(ICtx, /*PIC=*/false));
   ICtx.setObjectFileInfo(IMOFI.get());
   mca::AsmInstrumentRegionGenerator IRG(*TheTarget, SrcMgr, ICtx, *MAI, *STI,
-                                        *MCII, *IM);
+                                        *MCII, *IPRP, *IM);
   Expected<const mca::InstrumentRegions &> InstrumentRegionsOrErr =
       IRG.parseInstrumentRegions(std::move(IPtemp),
                                  shouldSkip(SkipType::PARSE_FAILURE));
@@ -556,21 +579,6 @@ int main(int argc, char **argv) {
   std::unique_ptr<ToolOutputFile> TOF = std::move(*OF);
 
   const MCSchedModel &SM = STI->getSchedModel();
-
-  std::unique_ptr<mca::InstrPostProcess> IPP;
-  if (!DisableCustomBehaviour) {
-    // TODO: It may be a good idea to separate CB and IPP so that they can
-    // be used independently of each other. What I mean by this is to add
-    // an extra command-line arg --disable-ipp so that CB and IPP can be
-    // toggled without needing to toggle both of them together.
-    IPP = std::unique_ptr<mca::InstrPostProcess>(
-        TheTarget->createInstrPostProcess(*STI, *MCII));
-  }
-  if (!IPP) {
-    // If the target doesn't have its own IPP implemented (or the -disable-cb
-    // flag is set) then we use the base class (which does nothing).
-    IPP = std::make_unique<mca::InstrPostProcess>(*STI, *MCII);
-  }
 
   // Create an instruction builder.
   mca::InstrBuilder IB(*STI, *MCII, *MRI, MCIA.get(), *IM, CallLatency);

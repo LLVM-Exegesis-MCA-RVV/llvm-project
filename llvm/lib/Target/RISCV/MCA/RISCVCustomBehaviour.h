@@ -26,6 +26,16 @@
 namespace llvm {
 namespace mca {
 
+class RISCVInstrPreProcess : public InstrPreProcess {
+public:
+  RISCVInstrPreProcess(const MCSubtargetInfo &STI, const MCInstrInfo &MCII)
+      : InstrPreProcess(STI, MCII) {}
+
+  ~RISCVInstrPreProcess() = default;
+
+  void preProcessInstruction(const MCInst &Inst, const std::function<void(const MCInst &)> &addInstruction) override;
+};
+
 class RISCVLMULInstrument : public Instrument {
 public:
   static const StringRef DESC_NAME;

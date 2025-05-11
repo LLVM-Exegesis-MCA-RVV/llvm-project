@@ -60,6 +60,7 @@ class TargetMachine;
 class TargetOptions;
 namespace mca {
 class CustomBehaviour;
+class InstrPreProcess;
 class InstrPostProcess;
 class InstrumentManager;
 struct SourceMgr;
@@ -126,6 +127,9 @@ MCSymbolizer *createMCSymbolizer(const Triple &TT, LLVMOpInfoCallback GetOpInfo,
 mca::CustomBehaviour *createCustomBehaviour(const MCSubtargetInfo &STI,
                                             const mca::SourceMgr &SrcMgr,
                                             const MCInstrInfo &MCII);
+
+mca::InstrPreProcess *createInstrPreProcess(const MCSubtargetInfo &STI,
+                                              const MCInstrInfo &MCII);
 
 mca::InstrPostProcess *createInstrPostProcess(const MCSubtargetInfo &STI,
                                               const MCInstrInfo &MCII);
@@ -221,6 +225,10 @@ public:
       mca::CustomBehaviour *(*)(const MCSubtargetInfo &STI,
                                 const mca::SourceMgr &SrcMgr,
                                 const MCInstrInfo &MCII);
+
+  using InstrPreProcessCtorTy =
+      mca::InstrPreProcess *(*)(const MCSubtargetInfo &STI,
+                                 const MCInstrInfo &MCII);
 
   using InstrPostProcessCtorTy =
       mca::InstrPostProcess *(*)(const MCSubtargetInfo &STI,
@@ -331,6 +339,10 @@ private:
   /// CustomBehaviourCtorFn - Construction function for this target's
   /// CustomBehaviour, if registered (default = nullptr).
   CustomBehaviourCtorTy CustomBehaviourCtorFn = nullptr;
+
+  /// InstrPreProcessCtorFn - Construction function for this target's
+  /// InstrPreProcess, if registered (default = nullptr).
+  InstrPreProcessCtorTy InstrPreProcessCtorFn = nullptr;
 
   /// InstrPostProcessCtorFn - Construction function for this target's
   /// InstrPostProcess, if registered (default = nullptr).
@@ -611,6 +623,15 @@ public:
                                               const MCInstrInfo &MCII) const {
     if (CustomBehaviourCtorFn)
       return CustomBehaviourCtorFn(STI, SrcMgr, MCII);
+    return nullptr;
+  }
+
+  /// createInstrPreProcess - Create a target specific InstrPreProcess.
+  /// This class is used by llvm-mca and requires backend functionality.
+  mca::InstrPreProcess *createInstrPreProcess(const MCSubtargetInfo &STI,
+                                                const MCInstrInfo &MCII) const {
+    if (InstrPreProcessCtorFn)
+      return InstrPreProcessCtorFn(STI, MCII);
     return nullptr;
   }
 
@@ -977,6 +998,20 @@ struct TargetRegistry {
   static void RegisterCustomBehaviour(Target &T,
                                       Target::CustomBehaviourCtorTy Fn) {
     T.CustomBehaviourCtorFn = Fn;
+  }
+
+  /// RegisterInstrPreProcess - Register an InstrPreProcess
+  /// implementation for the given target.
+  ///
+  /// Clients are responsible for ensuring that registration doesn't occur
+  /// while another thread is attempting to access the registry. Typically
+  /// this is done by initializing all targets at program startup.
+  ///
+  /// @param T - The target being registered.
+  /// @param Fn - A function to construct an InstrPreProcess for the target.
+  static void RegisterInstrPreProcess(Target &T,
+                                       Target::InstrPreProcessCtorTy Fn) {
+    T.InstrPreProcessCtorFn = Fn;
   }
 
   /// RegisterInstrPostProcess - Register an InstrPostProcess

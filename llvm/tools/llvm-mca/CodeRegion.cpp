@@ -26,12 +26,17 @@ bool CodeRegion::isLocInRange(SMLoc Loc) const {
 
 void CodeRegions::addInstruction(const MCInst &Instruction) {
   SMLoc Loc = Instruction.getLoc();
-  for (UniqueCodeRegion &Region : Regions)
-    if (Region->isLocInRange(Loc))
-      Region->addInstruction(Instruction);
+  for (UniqueCodeRegion &Region : Regions) {
+    if (Region->isLocInRange(Loc)) {
+      auto addInstruction = [&Region](const MCInst &Instruction) {
+          return Region->addInstruction(Instruction);
+        };
+      IPRP.preProcessInstruction(Instruction, addInstruction);
+    }
+  }
 }
 
-AnalysisRegions::AnalysisRegions(llvm::SourceMgr &S) : CodeRegions(S) {
+AnalysisRegions::AnalysisRegions(llvm::SourceMgr &S, mca::InstrPreProcess &P) : CodeRegions(S, P) {
   // Create a default region for the input code sequence.
   Regions.emplace_back(std::make_unique<CodeRegion>("", SMLoc()));
 }
@@ -112,7 +117,7 @@ void AnalysisRegions::endRegion(StringRef Description, SMLoc Loc) {
   }
 }
 
-InstrumentRegions::InstrumentRegions(llvm::SourceMgr &S) : CodeRegions(S) {}
+InstrumentRegions::InstrumentRegions(llvm::SourceMgr &S, mca::InstrPreProcess &P) : CodeRegions(S, P) {}
 
 void InstrumentRegions::beginRegion(StringRef Description, SMLoc Loc,
                                     UniqueInstrument I) {

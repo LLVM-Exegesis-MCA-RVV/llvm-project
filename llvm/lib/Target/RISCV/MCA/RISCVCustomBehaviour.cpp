@@ -36,6 +36,13 @@ struct VXMemOpInfo {
 namespace llvm {
 namespace mca {
 
+void RISCVInstrPreProcess::preProcessInstruction(const MCInst &Inst, const std::function<void(const MCInst &)> &addInstruction) {
+  size_t LMUL = 2;    // Should be actual value here
+  for (size_t i = 0; i < LMUL; ++i) {
+    addInstruction(Inst);
+  }
+}
+
 const llvm::StringRef RISCVLMULInstrument::DESC_NAME = "RISCV-LMUL";
 
 bool RISCVLMULInstrument::isDataValid(llvm::StringRef Data) {
@@ -337,6 +344,12 @@ unsigned RISCVInstrumentManager::getSchedClassID(
 using namespace llvm;
 using namespace mca;
 
+static InstrPreProcess *
+createRISCVInstrPreProcess(const MCSubtargetInfo &STI,
+                             const MCInstrInfo &MCII) {
+  return new RISCVInstrPreProcess(STI, MCII);
+}
+
 static InstrumentManager *
 createRISCVInstrumentManager(const MCSubtargetInfo &STI,
                              const MCInstrInfo &MCII) {
@@ -345,8 +358,12 @@ createRISCVInstrumentManager(const MCSubtargetInfo &STI,
 
 /// Extern function to initialize the targets for the RISC-V backend
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeRISCVTargetMCA() {
+  TargetRegistry::RegisterInstrPreProcess(getTheRISCV32Target(),
+                                            createRISCVInstrPreProcess);
   TargetRegistry::RegisterInstrumentManager(getTheRISCV32Target(),
                                             createRISCVInstrumentManager);
+  TargetRegistry::RegisterInstrPreProcess(getTheRISCV64Target(),
+                                            createRISCVInstrPreProcess);
   TargetRegistry::RegisterInstrumentManager(getTheRISCV64Target(),
                                             createRISCVInstrumentManager);
 }

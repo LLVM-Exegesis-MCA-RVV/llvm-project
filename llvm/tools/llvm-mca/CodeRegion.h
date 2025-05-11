@@ -149,6 +149,7 @@ class CodeRegions {
 protected:
   // A source manager. Used by the tool to generate meaningful warnings.
   llvm::SourceMgr &SM;
+  mca::InstrPreProcess &IPRP;
 
   using UniqueCodeRegion = std::unique_ptr<CodeRegion>;
   std::vector<UniqueCodeRegion> Regions;
@@ -156,7 +157,7 @@ protected:
   bool FoundErrors;
 
 public:
-  CodeRegions(llvm::SourceMgr &S) : SM(S), FoundErrors(false) {}
+  CodeRegions(llvm::SourceMgr &S, mca::InstrPreProcess &P) : SM(S), IPRP(P), FoundErrors(false) {}
   virtual ~CodeRegions() = default;
 
   typedef std::vector<UniqueCodeRegion>::iterator iterator;
@@ -193,7 +194,7 @@ public:
 };
 
 struct AnalysisRegions : public CodeRegions {
-  AnalysisRegions(llvm::SourceMgr &S);
+  AnalysisRegions(llvm::SourceMgr &S, mca::InstrPreProcess &P);
 
   void beginRegion(llvm::StringRef Description, llvm::SMLoc Loc) override;
   void beginRegion(llvm::StringRef Description, llvm::SMLoc Loc,
@@ -203,7 +204,7 @@ struct AnalysisRegions : public CodeRegions {
 
 struct InstrumentRegions : public CodeRegions {
 
-  InstrumentRegions(llvm::SourceMgr &S);
+  InstrumentRegions(llvm::SourceMgr &S, mca::InstrPreProcess &P);
 
   void beginRegion(llvm::StringRef Description, llvm::SMLoc Loc) override{};
   void beginRegion(llvm::StringRef Description, llvm::SMLoc Loc,

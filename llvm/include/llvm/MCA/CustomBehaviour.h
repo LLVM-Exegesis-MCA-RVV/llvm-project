@@ -24,9 +24,30 @@
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MCA/SourceMgr.h"
 #include "llvm/MCA/View.h"
+#include <functional>
 
 namespace llvm {
 namespace mca {
+
+/// Class which can be overriden by targets to modify the
+/// MCInst objects before it will be added to the pipeline.
+class InstrPreProcess {
+protected:
+  const MCSubtargetInfo &STI;
+  const MCInstrInfo &MCII;
+
+public:
+  InstrPreProcess(const MCSubtargetInfo &STI, const MCInstrInfo &MCII)
+      : STI(STI), MCII(MCII) {}
+
+  virtual ~InstrPreProcess() = default;
+
+  /// This method can be overriden by targets to modify the MCInst
+  /// object before it will be lowered to mca::Instruction.
+  virtual void preProcessInstruction(const MCInst &Inst, const std::function<void(const MCInst &)> &addInstruction) {
+    addInstruction(Inst);
+  }
+};
 
 /// Class which can be overriden by targets to modify the
 /// mca::Instruction objects before the pipeline starts.

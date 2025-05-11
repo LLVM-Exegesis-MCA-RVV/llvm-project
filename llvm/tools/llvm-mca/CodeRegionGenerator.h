@@ -161,7 +161,7 @@ protected:
   AnalysisRegions Regions;
 
 public:
-  AnalysisRegionGenerator(llvm::SourceMgr &SM) : Regions(SM) {}
+  AnalysisRegionGenerator(llvm::SourceMgr &SM, mca::InstrPreProcess &P) : Regions(SM, P) {}
 
   virtual Expected<const AnalysisRegions &>
   parseAnalysisRegions(const std::unique_ptr<MCInstPrinter> &IP,
@@ -174,7 +174,7 @@ protected:
   InstrumentRegions Regions;
 
 public:
-  InstrumentRegionGenerator(llvm::SourceMgr &SM) : Regions(SM) {}
+  InstrumentRegionGenerator(llvm::SourceMgr &SM, mca::InstrPreProcess &P) : Regions(SM, P) {}
 
   virtual Expected<const InstrumentRegions &>
   parseInstrumentRegions(const std::unique_ptr<MCInstPrinter> &IP,
@@ -216,8 +216,8 @@ class AsmAnalysisRegionGenerator final : public AnalysisRegionGenerator,
 public:
   AsmAnalysisRegionGenerator(const Target &T, llvm::SourceMgr &SM, MCContext &C,
                              const MCAsmInfo &A, const MCSubtargetInfo &S,
-                             const MCInstrInfo &I)
-      : AnalysisRegionGenerator(SM), AsmCodeRegionGenerator(T, C, A, S, I),
+                             const MCInstrInfo &I, mca::InstrPreProcess &P)
+      : AnalysisRegionGenerator(SM, P), AsmCodeRegionGenerator(T, C, A, S, I),
         CC(Regions), Streamer(Ctx, Regions) {}
 
   MCACommentConsumer *getCommentConsumer() override { return &CC; };
@@ -251,8 +251,8 @@ public:
   AsmInstrumentRegionGenerator(const Target &T, llvm::SourceMgr &SM,
                                MCContext &C, const MCAsmInfo &A,
                                const MCSubtargetInfo &S, const MCInstrInfo &I,
-                               InstrumentManager &IM)
-      : InstrumentRegionGenerator(SM), AsmCodeRegionGenerator(T, C, A, S, I),
+                               mca::InstrPreProcess &P, InstrumentManager &IM)
+      : InstrumentRegionGenerator(SM, P), AsmCodeRegionGenerator(T, C, A, S, I),
         CC(SM, Regions, IM), Streamer(Ctx, Regions, IM) {}
 
   MCACommentConsumer *getCommentConsumer() override { return &CC; };
