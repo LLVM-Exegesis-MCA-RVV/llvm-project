@@ -9,6 +9,9 @@
 //===----------------------------------------------------------------------===//
 /// Define scheduler resources associated with def operands.
 
+def TestWriteRes1         : SchedWrite;    // Companion resource for MOPs
+def TestWriteRes2         : SchedWrite;    // Companion resource for MOPs
+
 // This predicate is true when the rs2 operand of vlse or vsse is x0, false
 // otherwise.
 def VLDSX0Pred : MCSchedPredicate<CheckRegOperand<3, X0>>;
@@ -961,6 +964,8 @@ defm "" : LMULWriteRes<"WriteVIdxV", []>;
 // 16. Vector Permutation Instructions
 def : WriteRes<WriteVMovSX, []>;
 def : WriteRes<WriteVMovXS, []>;
+def : WriteRes<TestWriteRes1, []>; // Companion MOP resource
+def : WriteRes<TestWriteRes2, []>; // Companion MOP resource
 def : WriteRes<WriteVMovSF, []>;
 def : WriteRes<WriteVMovFS, []>;
 defm "" : LMULWriteRes<"WriteVSlideUpX", []>;

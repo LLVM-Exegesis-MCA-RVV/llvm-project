@@ -195,6 +195,9 @@ public:
   /// it returns the SchedClassID that belongs to MCI.
   virtual unsigned getSchedClassID(const MCInstrInfo &MCII, const MCInst &MCI,
                                    const SmallVector<Instrument *> &IVec) const;
+
+  virtual void postProcessRegion();
+  virtual bool filterInst(const MCInst Inst);
 };
 
 } // namespace mca

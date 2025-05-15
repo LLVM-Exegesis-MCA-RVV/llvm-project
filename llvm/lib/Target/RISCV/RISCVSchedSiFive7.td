@@ -230,6 +230,7 @@ def SiFive7VS          : ProcResource<1>; // Store sequencer
 // instruction at a time and remain busy for the number of cycles associated
 // with that instruction.
 def SiFive7VCQ         : ProcResource<1>; // Vector Command Queue
+def TestResource       : ProcResource<1>; // ProcResource for compaion MOP
 }
 
 def SiFive7PipeAB : ProcResGroup<[SiFive7PipeA, SiFive7PipeB]>;
@@ -1288,6 +1289,11 @@ def : ReadAdvance<ReadVMov1V, 0>;
 def : ReadAdvance<ReadVMov2V, 0>;
 def : ReadAdvance<ReadVMov4V, 0>;
 def : ReadAdvance<ReadVMov8V, 0>;
+
+let Latency = 123, ReleaseAtCycles = [123] in {
+  def : WriteRes<TestWriteRes1, [TestResource]>; // Definition for companion MOP resource
+  def : WriteRes<TestWriteRes2, [TestResource]>; // Definition for companion MOP resource
+}
 
 // Others
 def : ReadAdvance<ReadVMask, 0>;

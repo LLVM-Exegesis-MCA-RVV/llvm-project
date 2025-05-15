@@ -587,3 +587,9 @@ class MemoryQueue<ProcResourceKind PR> {
 
 class LoadQueue<ProcResourceKind LDQueue> : MemoryQueue<LDQueue>;
 class StoreQueue<ProcResourceKind STQueue> : MemoryQueue<STQueue>;
+
+// Class for CPU-specific micro-operations
+class UOp<int latency, int throughput> {
+  int Latency = latency;
+  int Througput = throughput;
+}
