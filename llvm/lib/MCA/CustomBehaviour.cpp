@@ -65,5 +65,9 @@ void InstrumentManager::postProcessRegion() {
   return;
 }
 
+bool InstrumentManager::filterInst(const MCInst Inst) {
+  return true;
+}
+
 } // namespace mca
 } // namespace llvm

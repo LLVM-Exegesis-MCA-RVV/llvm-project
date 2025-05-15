@@ -247,6 +247,19 @@ void RISCVInstrumentManager::postProcessRegion() {
   PipelineStatus = PipelineStatus ? false : true;
 }
 
+bool RISCVInstrumentManager::filterInst(const MCInst Inst) {
+  unsigned short Opcode = Inst.getOpcode();
+  const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
+  if (isVectorPipeline()) {
+    if (RVVMOPs)
+      return true;
+
+    return false;
+  }
+
+  return true;
+}
+
 unsigned RISCVInstrumentManager::getSchedClassID(
     const MCInstrInfo &MCII, const MCInst &MCI,
     const llvm::SmallVector<Instrument *> &IVec) const {

@@ -61,6 +61,8 @@
 #include "llvm/Support/WithColor.h"
 #include "llvm/TargetParser/Host.h"
 
+#include <iostream>
+
 using namespace llvm;
 
 static mc::RegisterMCTargetOptionsFlags MOF;
@@ -822,20 +824,25 @@ int main(int argc, char **argv) {
 
 
     LoweredSequence.clear();
+    DroppedInsts.clear();
     for (const MCInst &MCI : Insts) {
       SMLoc Loc = MCI.getLoc();
       const SmallVector<mca::Instrument *> Instruments =
           InstrumentRegions.getActiveInstruments(Loc);
       Expected<std::unique_ptr<mca::Instruction>> Inst =
           IB.createInstruction(MCI, Instruments);
+      if (!IM->filterInst(MCI)) {
+        DroppedInsts.insert(&MCI);
+        continue;
+      }
       IPP->postProcessInstruction(Inst.get(), MCI);
       InstToInstruments.insert({&MCI, Instruments});
       LoweredSequence.emplace_back(std::move(Inst.get()));
     }
     Insts = Region->dropInstructions(DroppedInsts);
 
-      auto Insts2 = /*filterVectorInsts*/Insts/*)*/;
-      mca::CircularSourceMgr S2(/*filterVectorSequence(*/LoweredSequence/*)*/,
+      auto Insts2 = Insts;
+      mca::CircularSourceMgr S2(LoweredSequence,
                               PrintInstructionTables ? 1 : Iterations);
       auto P2 = MCA.createDefaultPipeline(PO, S2, *CB);
       mca::PipelinePrinter Printer2(*P2, *Region, RegionIdx, *STI, PO);

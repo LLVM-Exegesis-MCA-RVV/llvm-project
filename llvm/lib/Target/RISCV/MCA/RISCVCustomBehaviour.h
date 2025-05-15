@@ -73,6 +73,7 @@ public:
                   const SmallVector<Instrument *> &IVec) const override;
 
   void postProcessRegion() override;
+  bool filterInst(const MCInst Inst) override;
 };
 
 } // namespace mca

@@ -176,6 +176,7 @@ public:
                                    const SmallVector<Instrument *> &IVec) const;
 
   virtual void postProcessRegion();
+  virtual bool filterInst(const MCInst Inst);
 };
 
 } // namespace mca
