@@ -81,6 +81,8 @@ class CodeRegion {
   llvm::StringRef Description;
   // Instructions that form this region.
   llvm::SmallVector<llvm::MCInst, 16> Instructions;
+  // Return after drop
+  llvm::SmallVector<llvm::MCInst, 16> BackupInstrs;
   // Source location range.
   llvm::SMLoc RangeStart;
   llvm::SMLoc RangeEnd;
@@ -104,10 +106,14 @@ public:
   dropInstructions(const llvm::SmallPtrSetImpl<const llvm::MCInst *> &Insts) {
     if (Insts.empty())
       return Instructions;
+    BackupInstrs = Instructions;
     llvm::erase_if(Instructions, [&Insts](const llvm::MCInst &Inst) {
       return Insts.contains(&Inst);
     });
     return Instructions;
+  }
+  void backupInstructions() {
+    Instructions = BackupInstrs;
   }
 
   llvm::SMLoc startLoc() const { return RangeStart; }

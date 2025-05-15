@@ -48,8 +48,11 @@ using namespace RISCV;
 
 namespace mca {
 
+const int MaxMOPs = 8;
+
 void RISCVInstrPreProcess::preProcessInstruction(const MCInst &Inst, const std::function<void(const MCInst &)> &addInstruction) {
-  size_t LMUL = 2;    // Should be actual value here
+  size_t LMUL = MaxMOPs;
+  // Unnecessary instructions will be eliminated after the actual LMUL will be extracted
   for (size_t i = 0; i < LMUL; ++i) {
     addInstruction(Inst);
   }
@@ -250,21 +253,27 @@ static bool opcodeHasEEWAndEMULInfo(unsigned short Opcode) {
 }
 
 void RISCVInstrumentManager::postProcessRegion() {
-  std::cout << "\nn\\n\n\n\n\n\n POST PROCESS RISCV REGION\n\n\n\n";
   PipelineStatus = PipelineStatus ? false : true;
 }
 
 bool RISCVInstrumentManager::filterInst(const MCInst Inst) {
-  unsigned short Opcode = Inst.getOpcode();
-  const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
-  if (isVectorPipeline()) {
-    if (RVVMOPs)
+  CurrentInstructionCounter++;
+  if (!isVectorPipeline()) {
+    if (CurrentInstructionCounter == 1)
       return true;
 
+    CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
     return false;
   }
 
-  return true;
+  unsigned short Opcode = Inst.getOpcode();
+  unsigned short LMUL = 2; // TODO: Extract this properly
+  const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
+  if (RVVMOPs && CurrentInstructionCounter <= LMUL)
+    return true;
+
+  CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
+  return false;
 }
 
 unsigned RISCVInstrumentManager::getSchedClassID(
@@ -348,14 +357,8 @@ unsigned RISCVInstrumentManager::getSchedClassID(
       const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
       if (RVVMOPs) {
         // Changing the opcode to the MOP
-        if (isVectorPipeline()) {
+        if (isVectorPipeline())
           VPOpcode = RVVMOPs->Pseudo;
-          std::cout << "\n\n FOUND MOP for INSTRUCTION: " << RVV->BaseInstr << "\n\n";
-        } else {
-          std::cout << "\n\n\n PIPELINE IS NOT VECTOR \n\n\n";
-        }
-      } else {
-        std::cout << "\n\n NO MOP FOR INSTRUCTION: " << RVV->BaseInstr << "\n\n";
       }
     }
   }

@@ -62,10 +62,11 @@ public:
 
 class RISCVInstrumentManager : public InstrumentManager {
   bool PipelineStatus;
+  int CurrentInstructionCounter;
 
 public:
   RISCVInstrumentManager(const MCSubtargetInfo &STI, const MCInstrInfo &MCII)
-      : InstrumentManager(STI, MCII), PipelineStatus(false) {}
+      : InstrumentManager(STI, MCII), PipelineStatus(false), CurrentInstructionCounter(0) {}
 
   bool shouldIgnoreInstruments() const override { return false; }
   bool supportsInstrumentType(StringRef Type) const override;

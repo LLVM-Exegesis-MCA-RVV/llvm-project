@@ -658,6 +658,10 @@ int main(int argc, char **argv) {
         }
         return 1;
       }
+      if (!IM->filterInst(MCI)) {
+        DroppedInsts.insert(&MCI);
+        continue;
+      }
 
       IPP->postProcessInstruction(Inst.get(), MCI);
       InstToInstruments.insert({&MCI, Instruments});
@@ -822,14 +826,17 @@ int main(int argc, char **argv) {
       Printer.printReport(TOF->os());
     }
 
+
+
+
+
+
     // BELOW CREATES ANOTHER PIPELINE ONLY FOR RISCV VECTOR MOPS
     // TODO: The following can be done implementing something like "PostProcessRegion"
     // TODO: this pipeline should be vector one. Probably this can be inside CB's postProcessRegion()
     IM->postProcessRegion(); // Setting pipeline as vector
-
-
-
-
+    Region->backupInstructions();
+    Insts = Region->getInstructions();
 
     LoweredSequence.clear();
     DroppedInsts.clear();
