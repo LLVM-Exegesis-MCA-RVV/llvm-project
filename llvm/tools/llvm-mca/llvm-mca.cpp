@@ -658,7 +658,7 @@ int main(int argc, char **argv) {
         }
         return 1;
       }
-      if (!IM->filterInst(MCI)) {
+      if (!IM->filterInst(MCI, Instruments)) {
         DroppedInsts.insert(&MCI);
         continue;
       }
@@ -846,7 +846,7 @@ int main(int argc, char **argv) {
           InstrumentRegions.getActiveInstruments(Loc);
       Expected<std::unique_ptr<mca::Instruction>> Inst =
           IB.createInstruction(MCI, Instruments);
-      if (!IM->filterInst(MCI)) {
+      if (!IM->filterInst(MCI, Instruments)) {
         DroppedInsts.insert(&MCI);
         continue;
       }

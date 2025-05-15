@@ -65,7 +65,8 @@ void InstrumentManager::postProcessRegion() {
   return;
 }
 
-bool InstrumentManager::filterInst(const MCInst Inst) {
+bool InstrumentManager::filterInst(const MCInst Inst,
+    const llvm::SmallVector<Instrument *> &IVec) {
   return true;
 }
 

@@ -256,7 +256,8 @@ void RISCVInstrumentManager::postProcessRegion() {
   PipelineStatus = PipelineStatus ? false : true;
 }
 
-bool RISCVInstrumentManager::filterInst(const MCInst Inst) {
+bool RISCVInstrumentManager::filterInst(const MCInst Inst,
+    const llvm::SmallVector<Instrument *> &IVec) {
   CurrentInstructionCounter++;
   if (!isVectorPipeline()) {
     if (CurrentInstructionCounter == 1)
@@ -267,7 +268,15 @@ bool RISCVInstrumentManager::filterInst(const MCInst Inst) {
   }
 
   unsigned short Opcode = Inst.getOpcode();
-  unsigned short LMUL = 2; // TODO: Extract this properly
+  RISCVLMULInstrument *LI = nullptr;
+  RISCVSEWInstrument *SI = nullptr;
+  for (auto &I : IVec) {
+    if (I->getDesc() == RISCVLMULInstrument::DESC_NAME)
+      LI = static_cast<RISCVLMULInstrument *>(I);
+    else if (I->getDesc() == RISCVSEWInstrument::DESC_NAME)
+      SI = static_cast<RISCVSEWInstrument *>(I);
+  }
+  uint8_t LMUL = LI->getLMUL();
   const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
   if (RVVMOPs && CurrentInstructionCounter <= LMUL)
     return true;
