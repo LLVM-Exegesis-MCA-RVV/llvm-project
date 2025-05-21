@@ -259,13 +259,13 @@ void RISCVInstrumentManager::postProcessRegion() {
 bool RISCVInstrumentManager::filterInst(const MCInst Inst,
     const llvm::SmallVector<Instrument *> &IVec) {
   CurrentInstructionCounter++;
-  if (!isVectorPipeline()) {
-    if (CurrentInstructionCounter == 1)
-      return true;
+  // if (!isVectorPipeline()) {
+  //   if (CurrentInstructionCounter <= LMUL)
+  //     return true;
 
-    CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
-    return false;
-  }
+  //   CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
+  //   return false;
+  // }
 
   unsigned short Opcode = Inst.getOpcode();
   RISCVLMULInstrument *LI = nullptr;
@@ -278,13 +278,20 @@ bool RISCVInstrumentManager::filterInst(const MCInst Inst,
   }
   uint8_t LMUL = LI->getLMUL();
   const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
-  if (RVVMOPs && CurrentInstructionCounter <= LMUL)
+  if (CurrentInstructionCounter == 1) {
+    CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
     return true;
+  }
+  if (RVVMOPs && CurrentInstructionCounter <= LMUL+1) {
+    CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
+    return true;
+  }
 
   CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
   return false;
 }
 
+static int MOPCounter = 0;
 unsigned RISCVInstrumentManager::getSchedClassID(
     const MCInstrInfo &MCII, const MCInst &MCI,
     const llvm::SmallVector<Instrument *> &IVec) const {
@@ -366,8 +373,10 @@ unsigned RISCVInstrumentManager::getSchedClassID(
       const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
       if (RVVMOPs) {
         // Changing the opcode to the MOP
-        if (isVectorPipeline())
+        if (MOPCounter && MOPCounter <= LMUL)
           VPOpcode = RVVMOPs->Pseudo;
+        MOPCounter++;
+        MOPCounter = MOPCounter % LMUL;
       }
     }
   }
