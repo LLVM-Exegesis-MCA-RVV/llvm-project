@@ -1551,7 +1551,27 @@ class MOP_PseudoTEST : Pseudo<(outs MxList[0].vrclass:$rd),(ins MxList[0].vrclas
 }
 
 def MOP_PseudoVMADC_VVM : MOP_PseudoTEST,
+      SchedHelper<[TestWriteRes1, ]>,
+      RISCVVPseudoMOP;
+
+def MOP_PseudoVADC_VVM : MOP_PseudoTEST,
+      SchedHelper<[TestWriteRes1 ]>,
+      RISCVVPseudoMOP;
+
+def MOP_PseudoVMV_V_V : MOP_PseudoTEST,
       SchedHelper<[TestWriteRes1, TestWriteRes2]>,
+      RISCVVPseudoMOP;
+
+def MOP_PseudoVMAND_MM : MOP_PseudoTEST,
+      SchedHelper<[ TestWriteRes2]>,
+      RISCVVPseudoMOP;
+
+def MOP_PseudoVSE8_V : MOP_PseudoTEST,
+      SchedHelper<[ TestWriteRes3]>,
+      RISCVVPseudoMOP;
+
+def MOP_PseudoVLE8_V : MOP_PseudoTEST,
+      SchedHelper<[ TestWriteRes3]>,
       RISCVVPseudoMOP;
 
 class VPseudoTiedBinaryCarryIn<VReg RetClass,

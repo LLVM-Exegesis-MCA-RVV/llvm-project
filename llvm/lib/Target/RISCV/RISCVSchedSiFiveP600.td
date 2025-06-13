@@ -340,6 +340,7 @@ def SiFiveP600VST          : ProcResource<1>;
 def SiFiveP600VDiv         : ProcResource<1>;
 def SiFiveP600VFloatDiv    : ProcResource<1>;
 def TestResourceP600       : ProcResource<1>; // ProcResource for compaion MOP
+def AnotherTestResourceP600       : ProcResource<1>; // ProcResource for compaion MOP
 
 // Integer arithmetic and logic
 def : WriteRes<WriteIALU, [SiFiveP600IntArith]>;
@@ -353,9 +354,13 @@ def : WriteRes<WriteJmp, [SiFiveP600Branch]>;
 def : WriteRes<WriteJal, [SiFiveP600Branch]>;
 def : WriteRes<WriteJalr, [SiFiveP600Branch]>;
 
-let Latency = 22, ReleaseAtCycles = [22] in {
+let Latency = 3, ReleaseAtCycles = [3] in {
   def : WriteRes<TestWriteRes1, [TestResourceP600]>;  // Definition for companion MOP resource
   def : WriteRes<TestWriteRes2, [TestResourceP600]>;  // Definition for companion MOP resource
+}
+
+let Latency = 5, ReleaseAtCycles = [5] in {
+  def : WriteRes<TestWriteRes3, [AnotherTestResourceP600]>;  // Definition for companion MOP resource
 }
 
 // CMOV

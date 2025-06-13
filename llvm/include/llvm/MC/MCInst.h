@@ -195,6 +195,8 @@ class MCInst {
 public:
   MCInst() = default;
 
+  bool isMOP = false;
+
   void setOpcode(unsigned Op) { Opcode = Op; }
   unsigned getOpcode() const { return Opcode; }
 

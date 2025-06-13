@@ -161,6 +161,7 @@ def SiFiveP400VST          : ProcResource<1>;
 def SiFiveP400VDiv         : ProcResource<1>;
 def SiFiveP400VFloatDiv    : ProcResource<1>;
 def TestResourceP400       : ProcResource<1>; // ProcResource for compaion MOP
+def AnotherTestResourceP400       : ProcResource<1>; // ProcResource for compaion MOP
 
 let Latency = 1 in {
 // Integer arithmetic and logic
@@ -180,6 +181,11 @@ let Latency = 123, ReleaseAtCycles = [123] in {
   def : WriteRes<TestWriteRes1, [TestResourceP400]>;  // Definition for companion MOP resource
   def : WriteRes<TestWriteRes2, [TestResourceP400]>;  // Definition for companion MOP resource
 }
+
+let Latency = 5, ReleaseAtCycles = [5] in {
+  def : WriteRes<TestWriteRes3, [AnotherTestResourceP400]>;  // Definition for companion MOP resource
+}
+
 
 // CMOV
 def P400WriteCMOV : SchedWriteRes<[SiFiveP400Branch, SiFiveP400IEXQ1]> {

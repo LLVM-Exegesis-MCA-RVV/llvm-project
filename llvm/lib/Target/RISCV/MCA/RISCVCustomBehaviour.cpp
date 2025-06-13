@@ -16,9 +16,13 @@
 #include "RISCV.h"
 #include "TargetInfo/RISCVTargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 
-#include <iostream>
+using namespace llvm;
+static cl::opt<bool>
+    EnableMOPs("enable-mops", cl::init(false),
+                cl::desc("Enable vector micro-operations output in timeline (RISCV only)"));
 
 #define DEBUG_TYPE "llvm-mca-riscv-custombehaviour"
 
@@ -51,11 +55,15 @@ namespace mca {
 const int MaxMOPs = 8;
 
 void RISCVInstrPreProcess::preProcessInstruction(const MCInst &Inst, const std::function<void(const MCInst &)> &addInstruction) {
-  size_t LMUL = MaxMOPs;
+  addInstruction(Inst);
+
+  if (!enableMOPs)
+    return;
   // Unnecessary instructions will be eliminated after the actual LMUL will be extracted
-  for (size_t i = 0; i < LMUL; ++i) {
-    addInstruction(Inst);
-  }
+  MCInst MCICopy = Inst;
+  MCICopy.isMOP = true;
+  for (size_t i = 0; i < MaxMOPs-1; ++i)
+    addInstruction(MCICopy);
 }
 
 const llvm::StringRef RISCVLMULInstrument::DESC_NAME = "RISCV-LMUL";
@@ -81,6 +89,26 @@ uint8_t RISCVLMULInstrument::getLMUL() const {
       .Case("MF2", 0b111)
       .Case("MF4", 0b110)
       .Case("MF8", 0b101);
+}
+
+int RISCVLMULInstrument::getMOPNumber() const {
+  int LMUL = getLMUL();
+  switch (LMUL) {
+    case 0:
+      return 0;
+    case 1:
+      return 2;
+    case 2:
+      return 4;
+    case 3:
+      return 8;
+    case 5:
+      return 8;
+    case 6:
+      return 4;
+    case 7:
+      return 2;
+  }
 }
 
 const llvm::StringRef RISCVSEWInstrument::DESC_NAME = "RISCV-SEW";
@@ -276,13 +304,13 @@ bool RISCVInstrumentManager::filterInst(const MCInst Inst,
     else if (I->getDesc() == RISCVSEWInstrument::DESC_NAME)
       SI = static_cast<RISCVSEWInstrument *>(I);
   }
-  uint8_t LMUL = LI->getLMUL();
+  uint8_t MOPNumber = LI->getMOPNumber();
   const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
   if (CurrentInstructionCounter == 1) {
     CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
     return true;
   }
-  if (RVVMOPs && CurrentInstructionCounter <= LMUL+1) {
+  if (RVVMOPs && CurrentInstructionCounter <= (MOPNumber+1)) {
     CurrentInstructionCounter = CurrentInstructionCounter % MaxMOPs;
     return true;
   }
@@ -372,11 +400,13 @@ unsigned RISCVInstrumentManager::getSchedClassID(
       VPOpcode = RVV->Pseudo;
       const auto *RVVMOPs = RISCVVInversePseudosMOPTable::getMOPInfo(Opcode);
       if (RVVMOPs) {
+        const int MOPNumber = LI->getMOPNumber();
         // Changing the opcode to the MOP
-        if (MOPCounter && MOPCounter <= LMUL)
+        if (MCI.isMOP) {
           VPOpcode = RVVMOPs->Pseudo;
+        }
         MOPCounter++;
-        MOPCounter = MOPCounter % LMUL;
+        MOPCounter = MOPCounter % MOPNumber;
       }
     }
   }
@@ -411,7 +441,7 @@ using namespace mca;
 static InstrPreProcess *
 createRISCVInstrPreProcess(const MCSubtargetInfo &STI,
                              const MCInstrInfo &MCII) {
-  return new RISCVInstrPreProcess(STI, MCII);
+  return new RISCVInstrPreProcess(STI, MCII, EnableMOPs);
 }
 
 static InstrumentManager *

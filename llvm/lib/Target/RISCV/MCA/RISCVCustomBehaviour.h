@@ -28,10 +28,11 @@ namespace mca {
 
 class RISCVInstrPreProcess : public InstrPreProcess {
 public:
-  RISCVInstrPreProcess(const MCSubtargetInfo &STI, const MCInstrInfo &MCII)
-      : InstrPreProcess(STI, MCII) {}
+  RISCVInstrPreProcess(const MCSubtargetInfo &STI, const MCInstrInfo &MCII, bool areMOPsEnabled = false)
+      : InstrPreProcess(STI, MCII), enableMOPs(areMOPsEnabled) {}
 
   ~RISCVInstrPreProcess() = default;
+  bool enableMOPs = false;
 
   void preProcessInstruction(const MCInst &Inst, const std::function<void(const MCInst &)> &addInstruction) override;
 };
@@ -46,6 +47,7 @@ public:
   ~RISCVLMULInstrument() = default;
 
   uint8_t getLMUL() const;
+  int getMOPNumber() const;
 };
 
 class RISCVSEWInstrument : public Instrument {
